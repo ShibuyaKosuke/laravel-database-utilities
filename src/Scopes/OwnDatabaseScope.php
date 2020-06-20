@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 
+/**
+ * Class OwnDatabaseScope
+ * @package ShibuyaKosuke\LaravelDatabaseUtilities\Scopes
+ */
 class OwnDatabaseScope implements Scope
 {
     /**
@@ -15,6 +19,10 @@ class OwnDatabaseScope implements Scope
     {
         $table_name = $model->getTable();
         $builder->where("{$table_name}.table_schema", \app('db.connection')->getDatabaseName())
-            ->where("{$table_name}.table_name", '<>', 'migrations');
+            ->whereNotIn("{$table_name}.table_name", [
+                'failed_jobs',
+                'migrations',
+                'password_resets'
+            ]);
     }
 }
