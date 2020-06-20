@@ -16,6 +16,6 @@
     },
     "require": {
         "diplodocker/comments-loader": "^0.0.2",
-        "laravel/framework": "^7.16"
+        "laravel/framework": "^6.0|^7.0"
     }
 }
