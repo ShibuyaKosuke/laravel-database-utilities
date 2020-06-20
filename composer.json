@@ -1,0 +1,21 @@
+{
+    "name": "shibuyakosuke/laravel-database-utilities",
+    "description": "database utilities for laravel",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ShibuyaKosuke",
+            "email": "shibuya@imagenious.co.jp"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "ShibuyaKosuke\\LaravelDatabaseUtilities\\": "src/"
+        }
+    },
+    "require": {
+        "diplodocker/comments-loader": "^0.0.2",
+        "laravel/framework": "^7.16"
+    }
+}
