@@ -2,6 +2,8 @@
 
 namespace ShibuyaKosuke\LaravelDatabaseUtilities\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -88,14 +90,16 @@ class Table extends InformationSchema
      */
     public function getPrimaryKeyAttribute()
     {
-        return $this->columns->filter(function (Column $column) {
-            return $column->COLUMN_KEY === 'PRI';
-        });
+        return $this->columns->filter(
+            function (Column $column) {
+                return $column->COLUMN_KEY === 'PRI';
+            }
+        );
     }
 
     /**
      * get belongs-to relation tables
-     * @return \Illuminate\Database\Eloquent\Builder[]|\Illuminate\Database\Eloquent\Collection
+     * @return Builder[]|Collection
      */
     public function getBelongsToAttribute()
     {
@@ -106,7 +110,7 @@ class Table extends InformationSchema
 
     /**
      * get belongs-to-many relation tables
-     * @return \Illuminate\Database\Eloquent\Builder[]|\Illuminate\Database\Eloquent\Collection
+     * @return Builder[]|Collection
      */
     public function getBelongsToManyAttribute()
     {
@@ -119,20 +123,31 @@ class Table extends InformationSchema
             ->pluck('TABLE_NAME');
 
         $join = $tables->crossJoin($tables)
-            ->map(function ($join) {
-                return implode('_', array_map(function ($join) {
-                    return Str::singular($join);
-                }, $join));
-            });
+            ->map(
+                function ($join) {
+                    return implode(
+                        '_',
+                        array_map(
+                            function ($join) {
+                                return Str::singular($join);
+                            },
+                            $join
+                        )
+                    );
+                }
+            );
 
         $belongsToMany = KeyColumnUsage::query()
-            ->whereIn('TABLE_NAME', function ($query) use ($join) {
-                $query->from('information_schema.KEY_COLUMN_USAGE')
-                    ->select('TABLE_NAME')
-                    ->whereNotNull('REFERENCED_TABLE_NAME')
-                    ->where('REFERENCED_TABLE_NAME', '=', $this->TABLE_NAME)
-                    ->whereIn('TABLE_NAME', $join);
-            })
+            ->whereIn(
+                'TABLE_NAME',
+                function ($query) use ($join) {
+                    $query->from('information_schema.KEY_COLUMN_USAGE')
+                        ->select('TABLE_NAME')
+                        ->whereNotNull('REFERENCED_TABLE_NAME')
+                        ->where('REFERENCED_TABLE_NAME', '=', $this->TABLE_NAME)
+                        ->whereIn('TABLE_NAME', $join);
+                }
+            )
             ->whereNotNull('REFERENCED_TABLE_NAME')
             ->where('REFERENCED_TABLE_NAME', '<>', $this->TABLE_NAME)
             ->get();
@@ -143,17 +158,20 @@ class Table extends InformationSchema
 
     /**
      * get has-many relation tables
-     * @return \Illuminate\Database\Eloquent\Builder[]|\Illuminate\Database\Eloquent\Collection
+     * @return Builder[]|Collection
      */
     public function getHasManyAttribute()
     {
         return Table::query()
             ->where('TABLE_COMMENT', '!=', '')
-            ->whereIn('TABLE_NAME', $this->hasMany(KeyColumnUsage::class, 'REFERENCED_TABLE_NAME', 'TABLE_NAME')
-                ->whereNotNull('REFERENCED_TABLE_NAME')
-                ->whereNotNull('REFERENCED_COLUMN_NAME')
-                ->get()
-                ->pluck('TABLE_NAME'))
+            ->whereIn(
+                'TABLE_NAME',
+                $this->hasMany(KeyColumnUsage::class, 'REFERENCED_TABLE_NAME', 'TABLE_NAME')
+                    ->whereNotNull('REFERENCED_TABLE_NAME')
+                    ->whereNotNull('REFERENCED_COLUMN_NAME')
+                    ->get()
+                    ->pluck('TABLE_NAME')
+            )
             ->get();
     }
 

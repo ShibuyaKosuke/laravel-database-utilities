@@ -17,5 +17,8 @@
     "require": {
         "diplodocker/comments-loader": "^0.0.2",
         "laravel/framework": "^6.0|^7.0"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.5"
     }
 }
