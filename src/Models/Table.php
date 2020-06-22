@@ -117,25 +117,25 @@ class Table extends InformationSchema
         if (!$this->TABLE_COMMENT) {
             return null;
         }
-        $tables = Table::query()
-            ->where('TABLE_COMMENT', '<>', '')
-            ->get()
-            ->pluck('TABLE_NAME');
+        $tables = Table::all()->reject(
+            function (Table $table) {
+                return $table->TABLE_COMMENT === '';
+            }
+        )->pluck('TABLE_NAME');
 
-        $join = $tables->crossJoin($tables)
-            ->map(
-                function ($join) {
-                    return implode(
-                        '_',
-                        array_map(
-                            function ($join) {
-                                return Str::singular($join);
-                            },
-                            $join
-                        )
-                    );
-                }
-            );
+        $join = $tables->crossJoin($tables)->map(
+            function ($join) {
+                return implode(
+                    '_',
+                    array_map(
+                        function ($join) {
+                            return Str::singular($join);
+                        },
+                        $join
+                    )
+                );
+            }
+        );
 
         $belongsToMany = KeyColumnUsage::query()
             ->whereIn(

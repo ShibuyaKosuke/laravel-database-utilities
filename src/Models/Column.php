@@ -42,4 +42,20 @@ class Column extends InformationSchema
     {
         return $this->belongsTo(Table::class);
     }
+
+    public function getBelongsToAttribute()
+    {
+        return $this->belongsTo(KeyColumnUsage::class, 'COLUMN_NAME', 'COLUMN_NAME')
+            ->where('key_column_usage.TABLE_NAME', $this->TABLE_NAME)
+            ->where('key_column_usage.TABLE_SCHEMA', $this->TABLE_SCHEMA)
+            ->where('key_column_usage.REFERENCED_TABLE_NAME', '!=', '')
+            ->where('key_column_usage.REFERENCED_COLUMN_NAME', '!=', '')
+            ->first()
+            ->getBelongsToAttribute()
+            ->first();
+    }
+
+    public function getHasManyAttribute()
+    {
+    }
 }
