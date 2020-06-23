@@ -36,8 +36,16 @@ class KeyColumnUsage extends InformationSchema
     public function getBelongsToAttribute()
     {
         return $this->belongsTo(Column::class, 'REFERENCED_COLUMN_NAME', 'COLUMN_NAME')
-            ->where('columns.TABLE_NAME', $this->REFERENCED_TABLE_NAME)
-            ->where('columns.TABLE_SCHEMA', $this->REFERENCED_TABLE_SCHEMA)
+            ->where('columns.REFERENCED_TABLE_NAME', $this->REFERENCED_TABLE_NAME)
+            ->where('columns.REFERENCED_TABLE_SCHEMA', $this->REFERENCED_TABLE_SCHEMA)
+            ->withDefault();
+    }
+
+    public function getHasManyAttribute()
+    {
+        return $this->belongsTo(Column::class, 'COLUMN_NAME', 'COLUMN_NAME')
+            ->where('columns.TABLE_NAME', $this->TABLE_NAME)
+            ->where('columns.TABLE_SCHEMA', $this->TABLE_SCHEMA)
             ->withDefault();
     }
 }
