@@ -50,7 +50,7 @@ class Column extends InformationSchema
             ->where('key_column_usage.TABLE_SCHEMA', $this->TABLE_SCHEMA)
             ->where('key_column_usage.REFERENCED_TABLE_NAME', '!=', '')
             ->where('key_column_usage.REFERENCED_COLUMN_NAME', '!=', '')
-            ->first()
+            ->firstOrNew()
             ->getBelongsToAttribute()
             ->first();
     }
