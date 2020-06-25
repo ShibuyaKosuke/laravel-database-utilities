@@ -57,5 +57,11 @@ class Column extends InformationSchema
 
     public function getHasManyAttribute()
     {
+        return $this->belongsTo(KeyColumnUsage::class, 'COLUMN_NAME', 'REFERENCED_COLUMN_NAME')
+            ->where('key_column_usage.REFERENCED_TABLE_NAME', $this->TABLE_NAME)
+            ->where('key_column_usage.REFERENCED_TABLE_SCHEMA', $this->TABLE_SCHEMA)
+            ->firstOrNew()
+            ->getHasManyAttribute()
+            ->first();
     }
 }
