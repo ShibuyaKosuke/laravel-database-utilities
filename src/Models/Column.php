@@ -40,7 +40,7 @@ class Column extends InformationSchema
      */
     public function table(): BelongsTo
     {
-        return $this->belongsTo(Table::class);
+        return $this->belongsTo(Table::class, 'TABLE_NAME', 'TABLE_NAME');
     }
 
     public function getBelongsToAttribute()
