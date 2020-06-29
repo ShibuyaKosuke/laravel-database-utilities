@@ -233,9 +233,16 @@ class Table extends InformationSchema
             ->whereNotNull('REFERENCED_COLUMN_NAME')
             ->get()
             ->map(function (KeyColumnUsage $keyColumnUsage) {
+                $column = Column::query()
+                    ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
+                    ->where('COLUMN_NAME', $keyColumnUsage->COLUMN_NAME)
+                    ->first();
+                $nullable = $column->IS_NULLABLE == 'YES';
+
                 return collect([
                     'relation_name' => str_replace('_id', '', $keyColumnUsage->COLUMN_NAME),
                     'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
+                    'nullable' => $nullable,
                     'ownTable' => $keyColumnUsage->TABLE_NAME,
                     'ownColumn' => $keyColumnUsage->COLUMN_NAME,
                     'otherTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
