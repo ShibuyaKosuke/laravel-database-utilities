@@ -2,8 +2,6 @@
 
 namespace ShibuyaKosuke\LaravelDatabaseUtilities\Models;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -34,9 +32,6 @@ use Illuminate\Support\Str;
  * @property string TABLE_COMMENT varchar
  *
  * @property-read Column[] columns
- * @property-read Table[] belongs_to
- * @property-read Table[] belongs_to_many
- * @property-read Table[] has_many
  *
  * @property-read string model_name
  * @property-read string controller_name
@@ -75,16 +70,6 @@ class Table extends InformationSchema
     }
 
     /**
-     * @return HasMany KeyColumnUsage[]
-     */
-    public function keyColumnUsages(): HasMany
-    {
-        return $this->hasMany(KeyColumnUsage::class, 'TABLE_NAME', 'TABLE_NAME')
-            ->whereNotNull('REFERENCED_TABLE_NAME')
-            ->whereNotNull('REFERENCED_COLUMN_NAME');
-    }
-
-    /**
      * get primary key name
      * @return Column[]|null
      */
@@ -95,84 +80,6 @@ class Table extends InformationSchema
                 return $column->COLUMN_KEY === 'PRI';
             }
         );
-    }
-
-    /**
-     * get belongs-to relation tables
-     * @return Builder[]|Collection
-     */
-    public function getBelongsToAttribute()
-    {
-        return Table::query()
-            ->whereIn('TABLE_NAME', $this->keyColumnUsages->pluck('REFERENCED_TABLE_NAME'))
-            ->get();
-    }
-
-    /**
-     * get belongs-to-many relation tables
-     * @return Builder[]|Collection
-     */
-    public function getBelongsToManyAttribute()
-    {
-        if (!$this->TABLE_COMMENT) {
-            return null;
-        }
-        $tables = Table::all()->reject(
-            function (Table $table) {
-                return $table->TABLE_COMMENT === '';
-            }
-        )->pluck('TABLE_NAME');
-
-        $join = $tables->crossJoin($tables)->map(
-            function ($join) {
-                return implode(
-                    '_',
-                    array_map(
-                        function ($join) {
-                            return Str::singular($join);
-                        },
-                        $join
-                    )
-                );
-            }
-        );
-
-        $belongsToMany = KeyColumnUsage::query()
-            ->whereIn(
-                'TABLE_NAME',
-                function ($query) use ($join) {
-                    $query->from('information_schema.KEY_COLUMN_USAGE')
-                        ->select('TABLE_NAME')
-                        ->whereNotNull('REFERENCED_TABLE_NAME')
-                        ->where('REFERENCED_TABLE_NAME', '=', $this->TABLE_NAME)
-                        ->whereIn('TABLE_NAME', $join);
-                }
-            )
-            ->whereNotNull('REFERENCED_TABLE_NAME')
-            ->where('REFERENCED_TABLE_NAME', '<>', $this->TABLE_NAME)
-            ->get();
-
-        $table_names = $belongsToMany->pluck('REFERENCED_TABLE_NAME') ?? [];
-        return Table::query()->whereIn('TABLE_NAME', $table_names)->get();
-    }
-
-    /**
-     * get has-many relation tables
-     * @return Builder[]|Collection
-     */
-    public function getHasManyAttribute()
-    {
-        return Table::query()
-            ->where('TABLE_COMMENT', '!=', '')
-            ->whereIn(
-                'TABLE_NAME',
-                $this->hasMany(KeyColumnUsage::class, 'REFERENCED_TABLE_NAME', 'TABLE_NAME')
-                    ->whereNotNull('REFERENCED_TABLE_NAME')
-                    ->whereNotNull('REFERENCED_COLUMN_NAME')
-                    ->get()
-                    ->pluck('TABLE_NAME')
-            )
-            ->get();
     }
 
     /**
@@ -240,6 +147,7 @@ class Table extends InformationSchema
                 $nullable = $column->IS_NULLABLE == 'YES';
 
                 return collect([
+                    'comment' => $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME),
                     'relation_name' => str_replace('_id', '', $keyColumnUsage->COLUMN_NAME),
                     'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
                     'nullable' => $nullable,
@@ -262,6 +170,7 @@ class Table extends InformationSchema
             })
             ->map(function (KeyColumnUsage $keyColumnUsage) {
                 return collect([
+                    'comment' => $this->getTableComment($keyColumnUsage->TABLE_NAME),
                     'relation_name' => $keyColumnUsage->TABLE_NAME,
                     'related_model' => Str::studly(Str::singular($keyColumnUsage->TABLE_NAME)),
                     'ownTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
@@ -295,12 +204,13 @@ class Table extends InformationSchema
             ->each(function (KeyColumnUsage $keyColumnUsage) use (&$belongsToMany) {
                 $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_table'] = $keyColumnUsage->TABLE_NAME;
                 $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_name'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['related_model'] = Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME));
 
                 if ($keyColumnUsage->REFERENCED_TABLE_NAME == $this->TABLE_NAME) {
                     $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
                     $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
                 } else {
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['comment'] = $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME);
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['related_model'] = Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME));
                     $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
                     $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
                 }
@@ -308,5 +218,10 @@ class Table extends InformationSchema
         $relations['belongs_to_many'] = collect(array_values($belongsToMany));
 
         return collect($relations);
+    }
+
+    protected function getTableComment($table_name)
+    {
+        return Table::query()->where('TABLE_NAME', $table_name)->first()->TABLE_COMMENT;
     }
 }
