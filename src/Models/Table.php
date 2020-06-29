@@ -219,4 +219,87 @@ class Table extends InformationSchema
     {
         return sprintf('%sComposer', $this->model_name);
     }
+
+    /**
+     * @return \Illuminate\Support\Collection
+     */
+    public function getRelationsAttribute()
+    {
+        $relations = [];
+
+        // belongs to
+        $relations['belongs_to'] = $this->hasMany(KeyColumnUsage::class, 'TABLE_NAME', 'TABLE_NAME')
+            ->whereNotNull('REFERENCED_TABLE_NAME')
+            ->whereNotNull('REFERENCED_COLUMN_NAME')
+            ->get()
+            ->map(function (KeyColumnUsage $keyColumnUsage) {
+                return collect([
+                    'relation_name' => str_replace('_id', '', $keyColumnUsage->COLUMN_NAME),
+                    'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
+                    'ownTable' => $keyColumnUsage->TABLE_NAME,
+                    'ownColumn' => $keyColumnUsage->COLUMN_NAME,
+                    'otherTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
+                    'otherColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME
+                ]);
+            });
+
+        $relations['has_many'] = $this->hasMany(KeyColumnUsage::class, 'REFERENCED_TABLE_NAME', 'TABLE_NAME')
+            ->whereNotNull('REFERENCED_TABLE_NAME')
+            ->whereNotNull('REFERENCED_COLUMN_NAME')
+            ->get()
+            ->reject(function (KeyColumnUsage $keyColumnUsage) {
+                return Table::query()
+                    ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
+                    ->where('TABLE_COMMENT', '=', '')
+                    ->first();
+            })
+            ->map(function (KeyColumnUsage $keyColumnUsage) {
+                return collect([
+                    'relation_name' => $keyColumnUsage->TABLE_NAME,
+                    'related_model' => Str::studly(Str::singular($keyColumnUsage->TABLE_NAME)),
+                    'ownTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
+                    'ownColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME,
+                    'otherTable' => $keyColumnUsage->TABLE_NAME,
+                    'otherColumn' => $keyColumnUsage->COLUMN_NAME
+                ]);
+            });
+
+        $belongsToMany = [];
+        KeyColumnUsage::query()
+            ->whereIn(
+                'TABLE_NAME',
+                function ($query) {
+                    $query->from('information_schema.KEY_COLUMN_USAGE')
+                        ->select('TABLE_NAME')
+                        ->whereNotNull('REFERENCED_TABLE_NAME')
+                        ->where('REFERENCED_TABLE_NAME', '=', $this->TABLE_NAME);
+                }
+            )
+            ->whereNotNull('REFERENCED_TABLE_NAME')
+            ->whereNotNull('REFERENCED_COLUMN_NAME')
+            ->orderBy('CONSTRAINT_NAME')
+            ->get()
+            ->filter(function (KeyColumnUsage $keyColumnUsage) {
+                return Table::query()
+                    ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
+                    ->where('TABLE_COMMENT', '=', '')
+                    ->first();
+            })
+            ->each(function (KeyColumnUsage $keyColumnUsage) use (&$belongsToMany) {
+                $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_table'] = $keyColumnUsage->TABLE_NAME;
+                $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_name'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+                $belongsToMany[$keyColumnUsage->TABLE_NAME]['related_model'] = Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME));
+
+                if ($keyColumnUsage->REFERENCED_TABLE_NAME == $this->TABLE_NAME) {
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
+                } else {
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
+                }
+            });
+        $relations['belongs_to_many'] = collect(array_values($belongsToMany));
+
+        return collect($relations);
+    }
 }
