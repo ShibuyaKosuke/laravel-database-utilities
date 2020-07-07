@@ -222,6 +222,6 @@ class Table extends InformationSchema
 
     protected function getTableComment($table_name)
     {
-        return Table::query()->where('TABLE_NAME', $table_name)->first()->TABLE_COMMENT;
+        return Table::query()->where('TABLE_NAME', $table_name)->firstOrNew()->TABLE_COMMENT;
     }
 }
