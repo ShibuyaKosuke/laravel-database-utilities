@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string REFERENCED_TABLE_SCHEMA
  * @property string REFERENCED_TABLE_NAME
  * @property string REFERENCED_COLUMN_NAME
+ * @property-read Column belongs_to
+ * @property-read Column has_many
  */
 class KeyColumnUsage extends InformationSchema
 {
@@ -33,6 +35,9 @@ class KeyColumnUsage extends InformationSchema
         return $this->belongsTo(Table::class, 'TABLE_NAME', 'TABLE_NAME')->withDefault();
     }
 
+    /**
+     * @return BelongsTo
+     */
     public function getBelongsToAttribute()
     {
         return $this->belongsTo(Column::class, 'REFERENCED_COLUMN_NAME', 'COLUMN_NAME')
@@ -41,6 +46,9 @@ class KeyColumnUsage extends InformationSchema
             ->withDefault();
     }
 
+    /**
+     * @return BelongsTo
+     */
     public function getHasManyAttribute()
     {
         return $this->belongsTo(Column::class, 'COLUMN_NAME', 'COLUMN_NAME')

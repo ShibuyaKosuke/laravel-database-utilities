@@ -30,6 +30,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string COLUMN_COMMENT
  * @property string GENERATION_EXPRESSION
  * @property-read Table table
+ * @property-read Column belongs_to
+ * @property-read Column has_many
  */
 class Column extends InformationSchema
 {
