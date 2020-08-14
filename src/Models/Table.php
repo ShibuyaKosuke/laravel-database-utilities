@@ -148,7 +148,7 @@ class Table extends InformationSchema
 
                 return collect([
                     'comment' => $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME),
-                    'relation_name' => str_replace('_id', '', $keyColumnUsage->COLUMN_NAME),
+                    'relation_name' => Str::camel(str_replace('_id', '', $keyColumnUsage->COLUMN_NAME)),
                     'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
                     'nullable' => $nullable,
                     'ownTable' => $keyColumnUsage->TABLE_NAME,
