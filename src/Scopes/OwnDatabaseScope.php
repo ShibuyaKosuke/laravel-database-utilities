@@ -19,8 +19,14 @@ class OwnDatabaseScope implements Scope
      */
     public function apply(Builder $builder, Model $model)
     {
+        $database = config('database.default');
+
+        $table_catalog = ($database === 'pgsql') ? app('db.connection')->getDatabaseName() : 'def';
+        $table_schema = ($database === 'pgsql') ? 'public' : app('db.connection')->getDatabaseName();
+
         $tableName = $model->getTable();
-        $builder->where("{$tableName}.table_schema", app('db.connection')->getDatabaseName())
+        $builder->where("{$tableName}.table_catalog", $table_catalog)
+            ->where("{$tableName}.table_schema", $table_schema)
             ->whereNotIn(
                 "{$tableName}.table_name",
                 [

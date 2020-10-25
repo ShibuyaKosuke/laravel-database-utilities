@@ -66,14 +66,15 @@ class Table extends InformationSchema
      */
     public function columns(): HasMany
     {
-        return $this->hasMany(Column::class, 'TABLE_NAME', 'TABLE_NAME');
+        $colum = (config('database.default') === 'pgsql') ? 'table_name' : 'TABLE_NAME';
+        return $this->hasMany(Column::class, $colum, $colum);
     }
 
     /**
      * get primary key name
      * @return Column[]|null
      */
-    public function getPrimaryKeyAttribute()
+    public function getPrimaryKeyAttribute(): ?array
     {
         return $this->columns->filter(
             function (Column $column) {
@@ -130,7 +131,7 @@ class Table extends InformationSchema
     /**
      * @return \Illuminate\Support\Collection
      */
-    public function getRelationsAttribute()
+    public function getRelationsAttribute(): \Illuminate\Support\Collection
     {
         $relations = [];
 
@@ -143,8 +144,8 @@ class Table extends InformationSchema
                 $column = Column::query()
                     ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
                     ->where('COLUMN_NAME', $keyColumnUsage->COLUMN_NAME)
-                    ->first();
-                $nullable = $column->IS_NULLABLE == 'YES';
+                    ->firstOrNew();
+                $nullable = $column->IS_NULLABLE === 'YES';
 
                 return collect([
                     'comment' => $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME),
@@ -196,19 +197,19 @@ class Table extends InformationSchema
             ->orderBy('CONSTRAINT_NAME')
             ->get()
             ->filter(function (KeyColumnUsage $keyColumnUsage) {
-                return $keyColumnUsage->TABLE_NAME != $this->TABLE_NAME && Table::query()
+                return $keyColumnUsage->TABLE_NAME !== $this->TABLE_NAME && Table::query()
                         ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
                         ->where('TABLE_COMMENT', '=', '')
                         ->first();
             })->reject(function (KeyColumnUsage $keyColumnUsage) {
-                return $keyColumnUsage->REFERENCED_TABLE_NAME == $this->TABLE_NAME;
+                return $keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME;
             });
 
         $keyColumnUsages->each(function (KeyColumnUsage $keyColumnUsage) use (&$belongsToMany) {
             $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_table'] = $keyColumnUsage->TABLE_NAME;
             $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_name'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
 
-            if ($keyColumnUsage->REFERENCED_TABLE_NAME == $this->TABLE_NAME) {
+            if ($keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME) {
                 $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
                 $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
             } else {
@@ -223,6 +224,10 @@ class Table extends InformationSchema
         return collect($relations);
     }
 
+    /**
+     * @param $table_name
+     * @return \Illuminate\Database\Eloquent\HigherOrderBuilderProxy|mixed
+     */
     protected function getTableComment($table_name)
     {
         return Table::query()->where('TABLE_NAME', $table_name)->firstOrNew()->TABLE_COMMENT;

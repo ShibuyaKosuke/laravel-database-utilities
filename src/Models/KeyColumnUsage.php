@@ -38,7 +38,7 @@ class KeyColumnUsage extends InformationSchema
     /**
      * @return BelongsTo
      */
-    public function getBelongsToAttribute()
+    public function getBelongsToAttribute(): BelongsTo
     {
         return $this->belongsTo(Column::class, 'REFERENCED_COLUMN_NAME', 'COLUMN_NAME')
             ->where('columns.TABLE_NAME', $this->REFERENCED_TABLE_NAME)
@@ -49,7 +49,7 @@ class KeyColumnUsage extends InformationSchema
     /**
      * @return BelongsTo
      */
-    public function getHasManyAttribute()
+    public function getHasManyAttribute(): BelongsTo
     {
         return $this->belongsTo(Column::class, 'COLUMN_NAME', 'COLUMN_NAME')
             ->where('columns.TABLE_NAME', $this->TABLE_NAME)
