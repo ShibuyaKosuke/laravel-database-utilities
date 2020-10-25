@@ -38,6 +38,18 @@ class Column extends InformationSchema
     protected $table = 'information_schema.columns';
 
     /**
+     * @param string $key
+     * @return mixed
+     */
+    public function __get($key)
+    {
+        if (config('database.default') === 'pgsql') {
+            $key = strtolower($key);
+        }
+        return $this->getAttribute($key);
+    }
+
+    /**
      * @return BelongsTo
      */
     public function table(): BelongsTo

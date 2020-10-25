@@ -61,6 +61,18 @@ class Table extends InformationSchema
     ];
 
     /**
+     * @param string $key
+     * @return mixed
+     */
+    public function __get($key)
+    {
+        if (config('database.default') === 'pgsql') {
+            $key = strtolower($key);
+        }
+        return $this->getAttribute($key);
+    }
+
+    /**
      * get columns
      * @return HasMany|Column[]
      */
@@ -126,6 +138,20 @@ class Table extends InformationSchema
     public function getViewComposerNameAttribute(): string
     {
         return sprintf('%sComposer', $this->model_name);
+    }
+
+    public function getTableCommentAttribute()
+    {
+        if (config('database.default') === 'pgsql') {
+            $res = \DB::query()
+                ->selectRaw('obj_description(oid) as description')
+                ->from('pg_class')
+                ->where('relkind', 'r')
+                ->where('relname', $this->table_name)
+                ->first();
+            return $res->description ?? null;
+        }
+        return $this->TABLE_COMMENT;
     }
 
     /**
