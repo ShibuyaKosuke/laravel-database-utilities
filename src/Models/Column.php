@@ -68,9 +68,13 @@ class Column extends InformationSchema
             ->where('key_column_usage.TABLE_SCHEMA', $this->TABLE_SCHEMA)
             ->where('key_column_usage.REFERENCED_TABLE_NAME', '!=', '')
             ->where('key_column_usage.REFERENCED_COLUMN_NAME', '!=', '')
-            ->firstOrNew();
-        return $keyColumnUsage->getBelongsToAttribute()
             ->first();
+
+        if ($keyColumnUsage) {
+            return $keyColumnUsage->getBelongsToAttribute()
+                ->first();
+        }
+        return null;
     }
 
     /**
@@ -85,30 +89,5 @@ class Column extends InformationSchema
             ->firstOrNew();
         return $keyColumnUsage->getHasManyAttribute()
             ->first();
-    }
-
-    /**
-     * @return mixed|string|null
-     */
-    public function getColumnCommentAttribute()
-    {
-        if (config('database.default') === 'pgsql') {
-            $res = \DB::query()
-                ->select('pg_catalog.pg_description.description')
-                ->from('pg_catalog.pg_statio_all_tables')
-                ->join('pg_catalog.pg_description', function ($query) {
-                    $query->whereRaw('pg_description.objoid = pg_catalog.pg_statio_all_tables.relid');
-                })
-                ->join('information_schema.columns', function ($query) {
-                    $query->whereRaw('pg_description.objsubid = information_schema.columns.ordinal_position')
-                        ->whereRaw('information_schema.columns.table_schema = pg_catalog.pg_statio_all_tables.schemaname')
-                        ->whereRaw('information_schema.columns.table_name = pg_catalog.pg_statio_all_tables.relname');
-                })
-                ->whereRaw('information_schema.columns.table_name = ?', $this->table_name)
-                ->whereRaw('information_schema.columns.column_name = ?', $this->column_name)
-                ->first();
-            return $res->description ?? null;
-        }
-        return $this->COLUMN_COMMENT;
     }
 }
