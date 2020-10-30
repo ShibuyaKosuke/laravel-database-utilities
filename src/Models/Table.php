@@ -152,46 +152,56 @@ class Table extends InformationSchema
             ->whereNotNull('REFERENCED_TABLE_NAME')
             ->whereNotNull('REFERENCED_COLUMN_NAME')
             ->get()
-            ->map(function (KeyColumnUsage $keyColumnUsage) {
-                $column = Column::query()
+            ->map(
+                function (KeyColumnUsage $keyColumnUsage) {
+                    $column = Column::query()
                     ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
                     ->where('COLUMN_NAME', $keyColumnUsage->COLUMN_NAME)
-                    ->firstOrNew();
-                $nullable = $column->IS_NULLABLE === 'YES';
+                    ->firstOr();
+                    $nullable = $column->IS_NULLABLE === 'YES';
 
-                return collect([
-                    'comment' => $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME),
-                    'relation_name' => Str::camel(str_replace('_id', '', $keyColumnUsage->COLUMN_NAME)),
-                    'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
-                    'nullable' => $nullable,
-                    'ownTable' => $keyColumnUsage->TABLE_NAME,
-                    'ownColumn' => $keyColumnUsage->COLUMN_NAME,
-                    'otherTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
-                    'otherColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME
-                ]);
-            });
+                    return collect(
+                        [
+                        'comment' => $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME),
+                        'relation_name' => Str::camel(str_replace('_id', '', $keyColumnUsage->COLUMN_NAME)),
+                        'related_model' => Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME)),
+                        'nullable' => $nullable,
+                        'ownTable' => $keyColumnUsage->TABLE_NAME,
+                        'ownColumn' => $keyColumnUsage->COLUMN_NAME,
+                        'otherTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
+                        'otherColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME
+                        ]
+                    );
+                }
+            );
 
         $relations['has_many'] = $this->hasMany(KeyColumnUsage::class, 'REFERENCED_TABLE_NAME', 'TABLE_NAME')
             ->whereNotNull('REFERENCED_TABLE_NAME')
             ->whereNotNull('REFERENCED_COLUMN_NAME')
             ->get()
-            ->reject(function (KeyColumnUsage $keyColumnUsage) {
-                return Table::query()
+            ->reject(
+                function (KeyColumnUsage $keyColumnUsage) {
+                    return Table::query()
                     ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
                     ->where('TABLE_COMMENT', '=', '')
                     ->first();
-            })
-            ->map(function (KeyColumnUsage $keyColumnUsage) {
-                return collect([
-                    'comment' => $this->getTableComment($keyColumnUsage->TABLE_NAME),
-                    'relation_name' => $keyColumnUsage->TABLE_NAME,
-                    'related_model' => Str::studly(Str::singular($keyColumnUsage->TABLE_NAME)),
-                    'ownTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
-                    'ownColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME,
-                    'otherTable' => $keyColumnUsage->TABLE_NAME,
-                    'otherColumn' => $keyColumnUsage->COLUMN_NAME
-                ]);
-            });
+                }
+            )
+            ->map(
+                function (KeyColumnUsage $keyColumnUsage) {
+                    return collect(
+                        [
+                        'comment' => $this->getTableComment($keyColumnUsage->TABLE_NAME),
+                        'relation_name' => $keyColumnUsage->TABLE_NAME,
+                        'related_model' => Str::studly(Str::singular($keyColumnUsage->TABLE_NAME)),
+                        'ownTable' => $keyColumnUsage->REFERENCED_TABLE_NAME,
+                        'ownColumn' => $keyColumnUsage->REFERENCED_COLUMN_NAME,
+                        'otherTable' => $keyColumnUsage->TABLE_NAME,
+                        'otherColumn' => $keyColumnUsage->COLUMN_NAME
+                        ]
+                    );
+                }
+            );
 
         $belongsToMany = [];
         $keyColumnUsages = KeyColumnUsage::query()
@@ -208,29 +218,35 @@ class Table extends InformationSchema
             ->whereNotNull('REFERENCED_COLUMN_NAME')
             ->orderBy('CONSTRAINT_NAME')
             ->get()
-            ->filter(function (KeyColumnUsage $keyColumnUsage) {
-                return $keyColumnUsage->TABLE_NAME !== $this->TABLE_NAME && Table::query()
+            ->filter(
+                function (KeyColumnUsage $keyColumnUsage) {
+                    return $keyColumnUsage->TABLE_NAME !== $this->TABLE_NAME && Table::query()
                         ->where('TABLE_NAME', $keyColumnUsage->TABLE_NAME)
                         ->where('TABLE_COMMENT', '=', '')
                         ->first();
-            })->reject(function (KeyColumnUsage $keyColumnUsage) {
-                return $keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME;
-            });
+                }
+            )->reject(
+                function (KeyColumnUsage $keyColumnUsage) {
+                    return $keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME;
+                }
+            );
 
-        $keyColumnUsages->each(function (KeyColumnUsage $keyColumnUsage) use (&$belongsToMany) {
-            $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_table'] = $keyColumnUsage->TABLE_NAME;
-            $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_name'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+        $keyColumnUsages->each(
+            function (KeyColumnUsage $keyColumnUsage) use (&$belongsToMany) {
+                $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_table'] = $keyColumnUsage->TABLE_NAME;
+                $belongsToMany[$keyColumnUsage->TABLE_NAME]['relation_name'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
 
-            if ($keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME) {
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
-            } else {
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['comment'] = $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME);
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['related_model'] = Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME));
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
-                $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
+                if ($keyColumnUsage->REFERENCED_TABLE_NAME === $this->TABLE_NAME) {
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['ownColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
+                } else {
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['comment'] = $this->getTableComment($keyColumnUsage->REFERENCED_TABLE_NAME);
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['related_model'] = Str::studly(Str::singular($keyColumnUsage->REFERENCED_TABLE_NAME));
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherTable'] = $keyColumnUsage->REFERENCED_TABLE_NAME;
+                    $belongsToMany[$keyColumnUsage->TABLE_NAME]['otherColumn'] = $keyColumnUsage->REFERENCED_COLUMN_NAME;
+                }
             }
-        });
+        );
         $relations['belongs_to_many'] = collect(array_values($belongsToMany));
 
         return collect($relations);
@@ -242,6 +258,6 @@ class Table extends InformationSchema
      */
     protected function getTableComment($table_name)
     {
-        return Table::query()->where('TABLE_NAME', $table_name)->firstOrNew()->TABLE_COMMENT;
+        return Table::query()->where('TABLE_NAME', $table_name)->firstOr()->TABLE_COMMENT;
     }
 }
